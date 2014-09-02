@@ -841,6 +841,63 @@ class DockerClientTest(Cleanup, unittest.TestCase):
             docker.client.DEFAULT_TIMEOUT_SECONDS
         )
 
+    def test_start_container_with_devices(self):
+        try:
+            device_origin = '/dev/sdc'
+            device_dest = '/dev/xvdc'
+            self.client.start(fake_api.FAKE_CONTAINER_ID,
+                              devices={device_origin: device_dest})
+        except Exception as e:
+            self.fail('Command should not raise exception: {0}'.format(e))
+
+        args = fake_request.call_args
+        self.assertEqual(
+            args[0][0],
+            url_prefix + 'containers/3cc2351ab11b/start'
+        )
+        self.assertEqual(
+            json.loads(args[1]['data']),
+            {"PublishAllPorts": False, "Privileged": False,
+             "Devices": ["/dev/sdc:/dev/xvdc"]}
+        )
+        self.assertEqual(
+            args[1]['headers'],
+            {'Content-Type': 'application/json'}
+        )
+        self.assertEqual(
+            args[1]['timeout'],
+            docker.client.DEFAULT_TIMEOUT_SECONDS
+        )
+
+    def test_start_container_with_devices_as_list_of_tuples(self):
+        try:
+            devices = [('origin' + str(i), 'dest' + str(i)) for i in range(2)]
+            devices += ['dev2', 'dev3:dev4']
+            self.client.start(fake_api.FAKE_CONTAINER_ID,
+                              devices=devices)
+        except Exception as e:
+            self.fail('Command should not raise exception: {0}'.format(e))
+
+        args = fake_request.call_args
+        self.assertEqual(
+            args[0][0],
+            url_prefix + 'containers/3cc2351ab11b/start'
+        )
+        self.assertEqual(
+            json.loads(args[1]['data']),
+            {"PublishAllPorts": False, "Privileged": False,
+             "Devices": ["origin0:dest0", "origin1:dest1",
+                         "dev2:dev2", "dev3:dev4"]}
+        )
+        self.assertEqual(
+            args[1]['headers'],
+            {'Content-Type': 'application/json'}
+        )
+        self.assertEqual(
+            args[1]['timeout'],
+            docker.client.DEFAULT_TIMEOUT_SECONDS
+        )
+
     def test_resize_container(self):
         try:
             self.client.resize(

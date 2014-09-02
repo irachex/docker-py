@@ -807,7 +807,7 @@ class Client(requests.Session):
     def start(self, container, binds=None, port_bindings=None, lxc_conf=None,
               publish_all_ports=False, links=None, privileged=False,
               dns=None, dns_search=None, volumes_from=None, network_mode=None,
-              restart_policy=None):
+              restart_policy=None, devices=None):
         if isinstance(container, dict):
             container = container.get('Id')
 
@@ -868,6 +868,21 @@ class Client(requests.Session):
 
         if restart_policy:
             start_config['RestartPolicy'] = restart_policy
+
+        if devices:
+            if isinstance(devices, dict):
+                devices = six.iteritems(devices)
+            formatted = []
+            for device in devices:
+                if isinstance(device, tuple):
+                    formatted.append('%s:%s' % device)
+                elif isinstance(device, six.string_types):
+                    if ':' in device:
+                        formatted.append(device)
+                    else:
+                        formatted.append('{0}:{0}'.format(device))
+
+            start_config['Devices'] = formatted
 
         url = self._url("/containers/{0}/start".format(container))
         res = self._post_json(url, data=start_config)

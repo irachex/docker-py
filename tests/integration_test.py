@@ -629,6 +629,37 @@ class TestRestartingContainer(BaseTestCase):
         res = [x for x in containers if 'Id' in x and x['Id'].startswith(id)]
         self.assertEqual(len(res), 0)
 
+
+class TestStartContainerWithDevices(BaseTestCase):
+    def runTest(self):
+        device_dest = '/dev/shm'
+        device_origin = tempfile.mkdtemp()
+        self.tmp_folders.append(device_origin)
+
+        filename = 'shared.txt'
+        shared_file = os.path.join(device_origin, filename)
+
+        with open(shared_file, 'w'):
+            container = self.client.create_container(
+                'busybox',
+                ['ls', device_dest]
+            )
+            container_id = container['Id']
+            self.client.start(
+                container_id,
+                devices={
+                    device_origin: device_dest
+                },
+            )
+            self.tmp_containers.append(container_id)
+            exitcode = self.client.wait(container_id)
+            self.assertEqual(exitcode, 0)
+            logs = self.client.logs(container_id)
+
+        os.unlink(shared_file)
+        self.assertIn(filename, logs)
+
+
 #################
 #  LINKS TESTS  #
 #################
